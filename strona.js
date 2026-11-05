@@ -37,10 +37,38 @@ document.addEventListener("keydown", event => {
 for (const carousel of document.querySelectorAll("[data-carousel]")) {
   const slides = Array.from(carousel.querySelectorAll("[data-slide]"));
   let index = 0;
-  function advance(step) {
-    slides[index].hidden = true;
-    index = (index + step + slides.length) % slides.length;
-    slides[index].hidden = false;
+  let changing = false;
+  async function advance(step) {
+    if (changing) return;
+    changing = true;
+    const previous = slides[index];
+    const nextIndex = (index + step + slides.length) % slides.length;
+    const next = slides[nextIndex];
+    if (next instanceof HTMLImageElement) {
+      next.loading = "eager";
+      await next.decode().catch(() => {});
+    }
+    const oldHeight = surface.getBoundingClientRect().height;
+    previous.classList.add("slide-leaving");
+    previous.setAttribute("aria-hidden", "true");
+    previous.inert = true;
+    next.hidden = false;
+    index = nextIndex;
+    const newHeight = surface.getBoundingClientRect().height;
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const timing = { duration: 420, easing: "cubic-bezier(.25,.7,.3,1)" };
+      const animations = [
+        previous.animate([{ opacity: 1 }, { opacity: 0 }], timing),
+        next.animate([{ opacity: 0 }, { opacity: 1 }], timing),
+        surface.animate([{ height: oldHeight + "px" }, { height: newHeight + "px" }], timing)
+      ];
+      await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
+    }
+    previous.hidden = true;
+    previous.classList.remove("slide-leaving");
+    previous.removeAttribute("aria-hidden");
+    previous.inert = false;
+    changing = false;
   }
   carousel.querySelector(".controls").addEventListener("click", event => {
     const button = event.target.closest("[data-step]");
@@ -59,17 +87,27 @@ for (const carousel of document.querySelectorAll("[data-carousel]")) {
 }
 
 const track = document.querySelector(".project-track");
+let requestedPosition = null;
+track.addEventListener("scrollend", () => { requestedPosition = null; });
+track.addEventListener("touchstart", () => { requestedPosition = null; }, { passive: true });
+track.addEventListener("wheel", () => { requestedPosition = null; }, { passive: true });
 document.querySelector(".other .controls").addEventListener("click", event => {
   const button = event.target.closest("[data-step]");
   if (!button) return;
-  // Start with the card nearest the left edge after a swipe.
   const left = track.getBoundingClientRect().left;
-  const cards = Array.from(track.children);
-  const first = cards.reduce((best, card) =>
-    Math.abs(card.getBoundingClientRect().left - left) < Math.abs(best.getBoundingClientRect().left - left) ? card : best);
-  const index = (cards.indexOf(first) + Number(button.dataset.step) + cards.length) % cards.length;
-  track.append(...cards.slice(index), ...cards.slice(0, index));
-  track.scrollLeft = 0;
+  const maxScroll = track.scrollWidth - track.clientWidth;
+  const positions = [...new Set(Array.from(track.children, card =>
+    Math.min(maxScroll, Math.max(0, Math.round(card.getBoundingClientRect().left - left + track.scrollLeft)))
+  ))];
+  const current = requestedPosition ?? track.scrollLeft;
+  const nearest = positions.reduce((best, position, index) =>
+    Math.abs(position - current) < Math.abs(positions[best] - current) ? index : best, 0);
+  const nextIndex = (nearest + Number(button.dataset.step) + positions.length) % positions.length;
+  requestedPosition = positions[nextIndex];
+  track.scrollTo({
+    left: requestedPosition,
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth"
+  });
 });
 
 // Play each entrance once. Without animation support, the page stays visible.
@@ -93,3 +131,19 @@ if ("IntersectionObserver" in window) {
     entrances.observe(element);
   }
 }
+
+// Separate thresholds prevent flicker while the header changes height.
+const pageHeader = document.querySelector("header");
+let headerUpdatePending = false;
+function updateHeader() {
+  if (window.scrollY > 96) pageHeader.classList.add("is-scrolled");
+  if (window.scrollY < 24) pageHeader.classList.remove("is-scrolled");
+  headerUpdatePending = false;
+}
+window.addEventListener("scroll", () => {
+  if (headerUpdatePending) return;
+  headerUpdatePending = true;
+  requestAnimationFrame(updateHeader);
+}, { passive: true });
+window.addEventListener("pageshow", updateHeader);
+updateHeader();

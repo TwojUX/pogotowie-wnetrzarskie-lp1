@@ -234,3 +234,50 @@ footer address {font-style:normal}
     .reveal-in { --reveal-distance: 10px; animation-duration: 480ms; animation-delay: 0ms; }
   }
 }
+
+/* Keep outgoing slides layered during the crossfade. */
+[data-carousel] > [aria-live] { position:relative; overflow:hidden; }
+[data-carousel] [data-slide].slide-leaving { position:absolute; top:0; left:0; width:100%; pointer-events:none; }
+
+/* Compact translucent header while scrolling. */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(246, 245, 241, .97);
+  border-bottom: 1px solid transparent;
+  transition: background-color 300ms ease, box-shadow 300ms ease, border-color 300ms ease;
+}
+header.is-scrolled {
+  border-bottom-color: rgba(49, 60, 52, .1);
+  box-shadow: 0 5px 24px rgba(36, 44, 40, .07);
+}
+@supports ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
+  header.is-scrolled {
+    background: rgba(246, 245, 241, .84);
+    -webkit-backdrop-filter: blur(16px) saturate(125%);
+    backdrop-filter: blur(16px) saturate(125%);
+  }
+}
+header .topbar {
+  transition: min-height 300ms cubic-bezier(.2,.75,.25,1);
+}
+header .logo {
+  transition: width 300ms ease, height 300ms ease;
+}
+header .cta.mini {
+  transition: padding 300ms ease, background-color 180ms ease;
+}
+header.is-scrolled .topbar { min-height: 76px; }
+header.is-scrolled .logo { width: 122px; height: 46px; }
+header.is-scrolled .cta.mini { padding-block: 12px; }
+html { scroll-padding-top: 116px; }
+@media (max-width: 780px) {
+  header.is-scrolled .topbar { min-height: 60px; }
+  header.is-scrolled .logo { width: 100px; height: 38px; }
+  header nav.open { max-height: calc(100svh - 76px); overflow-y: auto; }
+  html { scroll-padding-top: 84px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  header, header .topbar, header .logo, header .cta.mini { transition: none; }
+}
