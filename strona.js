@@ -3,34 +3,43 @@ document.documentElement.classList.add("js");
 
 const menuButton = document.querySelector(".menu-toggle");
 const menu = document.getElementById("menu");
+const mobileMenu = window.matchMedia("(max-width: 780px)");
+const menuBackdrop = document.querySelector(".menu-backdrop");
 function setMenu(open) {
+  open = open && mobileMenu.matches;
   menuButton.setAttribute("aria-expanded", String(open));
+  menuButton.setAttribute("aria-label", open ? "Zamknij menu" : "Otwórz menu");
   menu.classList.toggle("open", open);
+  document.body.classList.toggle("menu-open", open);
+  menu.inert = mobileMenu.matches && !open;
+  document.querySelectorAll("main, footer, .skip").forEach(element => { element.inert = open; });
 }
+setMenu(false);
+mobileMenu.addEventListener("change", () => setMenu(false));
+menuBackdrop.addEventListener("click", () => { setMenu(false); menuButton.focus(); });
 menuButton.addEventListener("click", () => setMenu(!menu.classList.contains("open")));
-menu.addEventListener("click", event => {
-  if (event.target.closest("a")) setMenu(false);
+menu.closest("header").addEventListener("click", event => {
+  const link = event.target.closest("a");
+  if (!link || !mobileMenu.matches) return;
+  setMenu(false);
+  if (link.hash) {
+    const target = document.querySelector(link.hash);
+    if (target) { target.setAttribute("tabindex", "-1"); target.focus({ preventScroll: true }); }
+  }
+});
+document.addEventListener("keydown", event => {
+  if (event.key !== "Tab" || !menu.classList.contains("open")) return;
+  const links = Array.from(document.querySelectorAll("header a, .menu-toggle"));
+  const first = links[0], last = links[links.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
 });
 
-const aiButton = document.querySelector(".ai");
-const aiInfo = document.getElementById("ai-info");
-function setInfo(open) {
-  aiButton.setAttribute("aria-expanded", String(open));
-  aiInfo.hidden = !open;
-}
-aiButton.addEventListener("click", () => setInfo(aiInfo.hidden));
-document.addEventListener("click", event => {
-  if (!event.target.closest(".ai, .tooltip")) setInfo(false);
-});
 document.addEventListener("keydown", event => {
   if (event.key !== "Escape") return;
   if (menu.classList.contains("open")) {
     setMenu(false);
     menuButton.focus();
-  }
-  if (!aiInfo.hidden) {
-    setInfo(false);
-    aiButton.focus();
   }
 });
 
@@ -38,6 +47,17 @@ for (const carousel of document.querySelectorAll("[data-carousel]")) {
   const slides = Array.from(carousel.querySelectorAll("[data-slide]"));
   let index = 0;
   let changing = false;
+  const position = carousel.querySelector("[data-position]");
+  // Fetch the neighbouring photos ahead of time so the change is instant.
+  function warmNeighbours() {
+    for (const step of [1, -1]) {
+      const slide = slides[(index + step + slides.length) % slides.length];
+      if (slide instanceof HTMLImageElement && slide.loading !== "eager") {
+        slide.loading = "eager";
+        slide.decode().catch(() => {});
+      }
+    }
+  }
   async function advance(step) {
     if (changing) return;
     changing = true;
@@ -54,6 +74,10 @@ for (const carousel of document.querySelectorAll("[data-carousel]")) {
     previous.inert = true;
     next.hidden = false;
     index = nextIndex;
+    if (position) {
+      position.textContent = String(index + 1).padStart(2, "0") + " / " + String(slides.length).padStart(2, "0");
+    }
+    warmNeighbours();
     const newHeight = surface.getBoundingClientRect().height;
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       const timing = { duration: 420, easing: "cubic-bezier(.25,.7,.3,1)" };
@@ -75,6 +99,14 @@ for (const carousel of document.querySelectorAll("[data-carousel]")) {
     if (button) advance(Number(button.dataset.step));
   });
   const surface = carousel.querySelector("[aria-live]");
+  if ("IntersectionObserver" in window) {
+    const nearby = new IntersectionObserver(entries => {
+      if (!entries.some(entry => entry.isIntersecting)) return;
+      nearby.disconnect();
+      warmNeighbours();
+    }, { rootMargin: "400px" });
+    nearby.observe(carousel);
+  }
   let start;
   surface.addEventListener("touchstart", event => { start = event.touches[0]; }, {passive:true});
   surface.addEventListener("touchend", event => {
@@ -110,40 +142,12 @@ document.querySelector(".other .controls").addEventListener("click", event => {
   });
 });
 
-// Play each entrance once. Without animation support, the page stays visible.
-if ("IntersectionObserver" in window) {
-  const revealTargets = [
-    ".hero-grid > *", ".wrap > h2", ".scene", ".scenes + .center",
-    ".team-grid > *", ".review-head", ".review-card", ".case-head",
-    ".flat-gallery", ".story > *", ".case-foot", ".other > h3", ".project-track",
-    ".scope-head", ".keys", ".rows > li", ".samples",
-    ".budget-grid > *", ".faq-grid > .stack", ".footer-grid"
-  ];
-  const entrances = new IntersectionObserver(entries => {
-    for (const entry of entries) {
-      if (entry.isIntersecting) {
-        entrances.unobserve(entry.target);
-        entry.target.classList.add("reveal-in");
-      }
-    }
-  });
-  for (const element of document.querySelectorAll(revealTargets.join(", "))) {
-    entrances.observe(element);
-  }
-}
 
-// Separate thresholds prevent flicker while the header changes height.
-const pageHeader = document.querySelector("header");
-let headerUpdatePending = false;
-function updateHeader() {
-  if (window.scrollY > 96) pageHeader.classList.add("is-scrolled");
-  if (window.scrollY < 24) pageHeader.classList.remove("is-scrolled");
-  headerUpdatePending = false;
+// Allow keyboard navigation while focus is inside either slider.
+for (const carousel of document.querySelectorAll('[data-carousel]')) {
+ carousel.addEventListener('keydown', event => {
+  if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+  event.preventDefault();
+  carousel.querySelector(`[data-step="${event.key === 'ArrowRight' ? 1 : -1}"]`).click();
+ });
 }
-window.addEventListener("scroll", () => {
-  if (headerUpdatePending) return;
-  headerUpdatePending = true;
-  requestAnimationFrame(updateHeader);
-}, { passive: true });
-window.addEventListener("pageshow", updateHeader);
-updateHeader();
