@@ -37,3 +37,19 @@ footer{padding:32px 0 24px;border-top:1px solid var(--line);font-size:14px;color
   .hero-caption>div{font-size:13px}
   .hero-caption p{font-size:22px}
 }
+
+/* Review excerpts keep the hero stable when switching between short and long reviews. */
+.review-card blockquote{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:6;
+  overflow:hidden;
+  height:132px;
+}
+.review-card figcaption{height:64px}
+@media(max-width:1400px){
+  .review-card figcaption{height:96px;padding-right:0}
+  .review-card .controls{position:static;justify-content:flex-end;margin-top:12px}
+}
+
+.hero-proof{align-items:end}
