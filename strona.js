@@ -82,10 +82,12 @@ for (const carousel of document.querySelectorAll("[data-carousel]")) {
     warmNeighbours();
     const newHeight = surface.getBoundingClientRect().height;
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const timing = { duration: 420, easing: "cubic-bezier(.25,.7,.3,1)" };
+      const review = carousel.dataset.carousel === "opinie";
+      const distance = review ? 18 * Math.sign(step) : 0;
+      const timing = { duration: review ? 650 : 420, easing: "cubic-bezier(.25,.7,.3,1)" };
       const animations = [
-        previous.animate([{ opacity: 1 }, { opacity: 0 }], timing),
-        next.animate([{ opacity: 0 }, { opacity: 1 }], timing),
+        previous.animate([{ opacity: 1, transform: "translateX(0)" }, { opacity: 0, transform: `translateX(${-distance}px)` }], timing),
+        next.animate([{ opacity: 0, transform: `translateX(${distance}px)` }, { opacity: 1, transform: "translateX(0)" }], timing),
         surface.animate([{ height: oldHeight + "px" }, { height: newHeight + "px" }], timing)
       ];
       await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
@@ -124,31 +126,22 @@ for (const carousel of document.querySelectorAll("[data-carousel]")) {
   }, {passive:true});
 
   if (carousel.dataset.carousel === 'opinie' && 'IntersectionObserver' in window) {
-    const toggle = carousel.querySelector('[data-autoplay]');
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let paused = false;
     let visible = false;
     let hovered = false;
     let timer;
     syncAutoplay = () => {
       window.clearTimeout(timer);
-      toggle.hidden = motion.matches;
-      const label = paused ? 'Wznów automatyczne opinie' : 'Wstrzymaj automatyczne opinie';
-      toggle.setAttribute('aria-label', label);
-      toggle.title = label;
-      toggle.querySelector('[data-pause-icon]').toggleAttribute('hidden', paused);
-      toggle.querySelector('[data-play-icon]').toggleAttribute('hidden', !paused);
-      const running = !paused && !motion.matches && visible && !document.hidden &&
+      const running = !motion.matches && visible && !document.hidden &&
         !hovered && !carousel.contains(document.activeElement);
       surface.setAttribute('aria-live', running ? 'off' : 'polite');
       if (running) {
         timer = window.setTimeout(async () => {
           await advance(1, true);
           syncAutoplay();
-        }, 8000);
+        }, 4000);
       }
     };
-    toggle.addEventListener('click', () => { paused = !paused; syncAutoplay(); });
     carousel.addEventListener('pointerenter', event => {
       if (event.pointerType === 'mouse') { hovered = true; syncAutoplay(); }
     });
@@ -170,12 +163,14 @@ for (const carousel of document.querySelectorAll("[data-carousel]")) {
 
 const track = document.querySelector(".project-track");
 let requestedPosition = null;
+let prepareProjectStep = () => {};
 track.addEventListener("scrollend", () => { requestedPosition = null; });
 track.addEventListener("touchstart", () => { requestedPosition = null; }, { passive: true });
 track.addEventListener("wheel", () => { requestedPosition = null; }, { passive: true });
 document.querySelector(".other .controls").addEventListener("click", event => {
   const button = event.target.closest("[data-step]");
   if (!button) return;
+  prepareProjectStep();
   const left = track.getBoundingClientRect().left;
   const maxScroll = track.scrollWidth - track.clientWidth;
   const positions = [...new Set(Array.from(track.children, card =>
@@ -302,4 +297,126 @@ if ('IntersectionObserver' in window && 'animate' in Element.prototype) {
     entries.forEach(entry => entry.target.classList.toggle('is-on-screen', entry.isIntersecting));
   });
   document.querySelectorAll('.cta:not(.mini)').forEach(button => visibleButtons.observe(button));
+}
+
+// A continuous loop of project photos; the six original cards remain accessible.
+if ('IntersectionObserver' in window) {
+  const area = track.closest('.other');
+  const originals = Array.from(track.children);
+  const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let copies = [];
+  let cycleWidth = 0;
+  let position = 0;
+  let visible = false;
+  let hovered = false;
+  let pointerDown = false;
+  let frame = 0;
+  let lastTime = 0;
+  let holdUntil = 0;
+  let resumeTimer;
+
+  function stop() {
+    cancelAnimationFrame(frame);
+    frame = 0;
+    lastTime = 0;
+  }
+  function normalize() {
+    if (!cycleWidth) return;
+    position = track.scrollLeft;
+    position = cycleWidth + ((position - cycleWidth) % cycleWidth + cycleWidth) % cycleWidth;
+    track.scrollLeft = position;
+  }
+  function canMove() {
+    return copies.length && visible && !preference.matches && !document.hidden &&
+      !hovered && !pointerDown && !area.contains(document.activeElement);
+  }
+  function tick(now) {
+    frame = 0;
+    if (!canMove()) { lastTime = 0; return; }
+    const elapsed = lastTime ? Math.min(now - lastTime, 64) : 0;
+    lastTime = now;
+    position += (window.innerWidth <= 780 ? 28 : 36) * elapsed / 1000;
+    if (position >= cycleWidth * 2) position -= cycleWidth;
+    track.scrollLeft = position;
+    frame = requestAnimationFrame(tick);
+  }
+  function sync() {
+    stop();
+    clearTimeout(resumeTimer);
+    if (!canMove()) return;
+    const wait = holdUntil - performance.now();
+    if (wait > 0) { resumeTimer = setTimeout(sync, wait); return; }
+    normalize();
+    frame = requestAnimationFrame(tick);
+  }
+  function hold() {
+    stop();
+    holdUntil = performance.now() + 1600;
+    sync();
+  }
+  function measure() {
+    if (!copies.length) return;
+    const previous = cycleWidth;
+    const fraction = previous ? ((track.scrollLeft - previous) % previous + previous) % previous / previous : 0;
+    cycleWidth = originals[0].offsetLeft - copies[0].offsetLeft;
+    if (!cycleWidth) return;
+    position = cycleWidth * (1 + fraction);
+    track.scrollLeft = position;
+    requestedPosition = null;
+    sync();
+  }
+  function configure() {
+    stop();
+    clearTimeout(resumeTimer);
+    if (preference.matches) {
+      const offset = cycleWidth ? ((track.scrollLeft - cycleWidth) % cycleWidth + cycleWidth) % cycleWidth : track.scrollLeft;
+      copies.forEach(card => card.remove());
+      copies = [];
+      cycleWidth = 0;
+      track.classList.remove('is-looping');
+      track.scrollLeft = offset;
+      requestedPosition = null;
+      return;
+    }
+    if (!copies.length) {
+      const copy = card => {
+        const clone = card.cloneNode(true);
+        clone.setAttribute('aria-hidden', 'true');
+        clone.inert = true;
+        return clone;
+      };
+      const before = originals.map(copy);
+      const after = originals.map(copy);
+      track.classList.add('is-looping');
+      track.prepend(...before);
+      track.append(...after);
+      copies = [...before, ...after];
+    }
+    measure();
+  }
+  prepareProjectStep = () => { stop(); normalize(); hold(); };
+  area.addEventListener('pointerenter', event => {
+    if (event.pointerType === 'mouse') { hovered = true; sync(); }
+  });
+  area.addEventListener('pointerleave', event => {
+    if (event.pointerType === 'mouse') { hovered = false; sync(); }
+  });
+  area.addEventListener('focusin', sync);
+  area.addEventListener('focusout', () => queueMicrotask(sync));
+  track.addEventListener('pointerdown', () => { pointerDown = true; sync(); });
+  window.addEventListener('pointerup', () => { if (pointerDown) { pointerDown = false; hold(); } });
+  window.addEventListener('pointercancel', () => { pointerDown = false; hold(); });
+  track.addEventListener('touchstart', () => { pointerDown = true; sync(); }, { passive: true });
+  track.addEventListener('touchend', () => { pointerDown = false; hold(); }, { passive: true });
+  track.addEventListener('wheel', hold, { passive: true });
+  document.addEventListener('visibilitychange', sync);
+  preference.addEventListener('change', configure);
+  const viewport = new IntersectionObserver(entries => {
+    visible = entries[0].isIntersecting && entries[0].intersectionRatio >= .15;
+    sync();
+  }, { threshold: .15 });
+  viewport.observe(track);
+  const sizing = new ResizeObserver(measure);
+  sizing.observe(track);
+  configure();
 }
