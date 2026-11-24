@@ -199,3 +199,57 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 window.addEventListener("pageshow", updateHeader);
 updateHeader();
+
+// Animate each entrance once; content is visible even if scripting is unavailable.
+if ('IntersectionObserver' in window && 'animate' in Element.prototype) {
+  const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const entranceTargets = Array.from(document.querySelectorAll([
+    '.hero-panel h1', '.hero-sub', '.benefits', '.hero-cta',
+    '.projects-head', '.project-track', '.case', '.cta-banner',
+    '.scope-head', '.scope-grid', '.team-shell',
+    '.process-section > .eyebrow', '.process-section > h2', '.process-section > .lead',
+    '.process-grid > li', '.cost-shell', '.consultation-grid',
+    '.faq-intro', '.faq-rows > li', '.closing'
+  ].join(', ')));
+  const entered = new WeakSet();
+  const activeEntrances = new Set();
+  const entrances = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const element = entry.target;
+      entrances.unobserve(element);
+      entered.add(element);
+      if (motionPreference.matches) continue;
+      let delay = 0;
+      if (element.matches('.process-grid > li')) {
+        delay = Array.from(element.parentElement.children).indexOf(element) % 3 * 70;
+      }
+      const distance = window.matchMedia('(max-width: 780px)').matches ? 10 : 16;
+      const animation = element.animate([
+        { opacity: 0, transform: `translateY(${distance}px)` },
+        { opacity: 1, transform: 'translateY(0)' }
+      ], { duration: 700, delay, easing: 'cubic-bezier(.2,.75,.25,1)', fill: 'backwards' });
+      activeEntrances.add(animation);
+      animation.finished.catch(() => {}).finally(() => activeEntrances.delete(animation));
+    }
+  }, { threshold: 0.06, rootMargin: '0px 0px -24px 0px' });
+  function syncEntrancePreference() {
+    entrances.disconnect();
+    if (motionPreference.matches) {
+      activeEntrances.forEach(animation => animation.cancel());
+      activeEntrances.clear();
+      return;
+    }
+    entranceTargets.forEach(element => {
+      if (!entered.has(element)) entrances.observe(element);
+    });
+  }
+  motionPreference.addEventListener('change', syncEntrancePreference);
+  syncEntrancePreference();
+
+  // Pause the button sheen whenever a CTA is outside the viewport.
+  const visibleButtons = new IntersectionObserver(entries => {
+    entries.forEach(entry => entry.target.classList.toggle('is-on-screen', entry.isIntersecting));
+  });
+  document.querySelectorAll('.cta:not(.mini)').forEach(button => visibleButtons.observe(button));
+}

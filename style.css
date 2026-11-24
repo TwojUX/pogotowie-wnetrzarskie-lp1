@@ -170,7 +170,7 @@ html{scroll-padding-top:116px}
 @media(max-width:780px){.hero-photo{min-height:0;padding-bottom:88px}}
 
 /* Closing consultation section carried over from LP2. */
-.closing-section{background:#fff;padding:0 0 var(--section-space)}
+.closing-section{background:transparent;padding:0 0 var(--section-space)}
 .closing{
   display:grid;justify-items:center;gap:24px;
   padding:clamp(40px,6vw,80px) clamp(24px,5vw,64px);
@@ -189,3 +189,26 @@ html{scroll-padding-top:116px}
   .closing-phone{display:none}
 }
 @media(max-width:360px){.closing{padding-inline:12px}}
+
+/* Gentle CTA feedback and the same occasional sheen as LP2. */
+.cta:not(.mini){
+  position:relative;overflow:hidden;isolation:isolate;
+  transition:background-color 180ms ease,transform 220ms ease,box-shadow 260ms ease;
+}
+@media(hover:hover) and (prefers-reduced-motion:no-preference){
+  .cta:not(.mini):hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(217,27,72,.2)}
+  .cta:not(.mini):active{transform:translateY(0) scale(.985);box-shadow:none}
+}
+@media(prefers-reduced-motion:no-preference){
+  @keyframes cta-sheen{
+    0%,80%{transform:translateX(-120%) skewX(-18deg)}
+    100%{transform:translateX(340%) skewX(-18deg)}
+  }
+  .cta:not(.mini):after{
+    content:'';position:absolute;inset:0 auto 0 0;width:36%;pointer-events:none;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);
+    animation:cta-sheen 8s ease-in-out infinite 1s backwards paused;
+  }
+  .cta.is-on-screen:not(.mini):after{animation-play-state:running}
+}
+@media(prefers-reduced-motion:reduce){.cta:not(.mini){transition:none}}
