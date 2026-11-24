@@ -48,6 +48,7 @@ for (const carousel of document.querySelectorAll("[data-carousel]")) {
   let index = 0;
   let changing = false;
   const position = carousel.querySelector("[data-position]");
+  let syncAutoplay = () => {};
   // Fetch the neighbouring photos ahead of time so the change is instant.
   function warmNeighbours() {
     for (const step of [1, -1]) {
@@ -58,9 +59,10 @@ for (const carousel of document.querySelectorAll("[data-carousel]")) {
       }
     }
   }
-  async function advance(step) {
+  async function advance(step, automatic = false) {
     if (changing) return;
     changing = true;
+    surface.setAttribute("aria-live", automatic ? "off" : "polite");
     const previous = slides[index];
     const nextIndex = (index + step + slides.length) % slides.length;
     const next = slides[nextIndex];
@@ -96,7 +98,10 @@ for (const carousel of document.querySelectorAll("[data-carousel]")) {
   }
   carousel.querySelector(".controls").addEventListener("click", event => {
     const button = event.target.closest("[data-step]");
-    if (button) advance(Number(button.dataset.step));
+    if (button) {
+      advance(Number(button.dataset.step));
+      syncAutoplay();
+    }
   });
   const surface = carousel.querySelector("[aria-live]");
   if ("IntersectionObserver" in window) {
@@ -115,7 +120,52 @@ for (const carousel of document.querySelectorAll("[data-carousel]")) {
     const dy = event.changedTouches[0].clientY - start.clientY;
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) advance(dx < 0 ? 1 : -1);
     start = null;
+    syncAutoplay();
   }, {passive:true});
+
+  if (carousel.dataset.carousel === 'opinie' && 'IntersectionObserver' in window) {
+    const toggle = carousel.querySelector('[data-autoplay]');
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let paused = false;
+    let visible = false;
+    let hovered = false;
+    let timer;
+    syncAutoplay = () => {
+      window.clearTimeout(timer);
+      toggle.hidden = motion.matches;
+      const label = paused ? 'Wznów automatyczne opinie' : 'Wstrzymaj automatyczne opinie';
+      toggle.setAttribute('aria-label', label);
+      toggle.title = label;
+      toggle.querySelector('[data-pause-icon]').toggleAttribute('hidden', paused);
+      toggle.querySelector('[data-play-icon]').toggleAttribute('hidden', !paused);
+      const running = !paused && !motion.matches && visible && !document.hidden &&
+        !hovered && !carousel.contains(document.activeElement);
+      surface.setAttribute('aria-live', running ? 'off' : 'polite');
+      if (running) {
+        timer = window.setTimeout(async () => {
+          await advance(1, true);
+          syncAutoplay();
+        }, 8000);
+      }
+    };
+    toggle.addEventListener('click', () => { paused = !paused; syncAutoplay(); });
+    carousel.addEventListener('pointerenter', event => {
+      if (event.pointerType === 'mouse') { hovered = true; syncAutoplay(); }
+    });
+    carousel.addEventListener('pointerleave', event => {
+      if (event.pointerType === 'mouse') { hovered = false; syncAutoplay(); }
+    });
+    carousel.addEventListener('focusin', syncAutoplay);
+    carousel.addEventListener('focusout', () => queueMicrotask(syncAutoplay));
+    document.addEventListener('visibilitychange', syncAutoplay);
+    motion.addEventListener('change', syncAutoplay);
+    const visibility = new IntersectionObserver(entries => {
+      visible = entries[0].isIntersecting && entries[0].intersectionRatio >= .5;
+      syncAutoplay();
+    }, { threshold: .5 });
+    visibility.observe(carousel);
+    syncAutoplay();
+  }
 }
 
 const track = document.querySelector(".project-track");
