@@ -53,3 +53,7 @@ footer{padding:32px 0 24px;border-top:1px solid var(--line);font-size:14px;color
 }
 
 .hero-proof{align-items:end}
+
+/* Match the consultation wording and emphasis used on LP2. */
+.consultation-cta{text-transform:uppercase;letter-spacing:1px}
+.consultation-cta b{font-weight:900}
