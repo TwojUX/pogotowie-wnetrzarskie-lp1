@@ -71,3 +71,58 @@ footer{padding:32px 0 24px;border-top:1px solid var(--line);font-size:14px;color
 .scope-shell:after{top:148px;right:0}
 @media(max-width:1000px){.scope-head:before,.scope-shell:after{display:none}}
 @media(max-width:780px){.case-grid{padding-top:16px}}
+
+/* Round the two exposed lower corners of the stepped pricing panel. */
+.cost-shell{--cost-notch-height:160px}
+.cost-shell:before,.cost-details:before{
+  content:'';position:absolute;width:18px;height:18px;pointer-events:none;
+  background:radial-gradient(circle at top right,transparent 18px,var(--paper) 18.5px);
+}
+.cost-shell:before{left:0;bottom:var(--cost-notch-height)}
+.cost-details:before{left:44%;bottom:0}
+@media(max-width:1000px){.cost-shell{--cost-notch-height:220px}}
+@media(max-width:780px){.cost-shell:before,.cost-details:before{display:none}}
+
+/* Join the team copy to the statistics using the actual column edge. */
+.team-stats:before{display:none}
+.team-copy{position:relative}
+.team-copy:after{
+  content:'';position:absolute;left:0;right:0;bottom:-24px;height:24px;background:#fff;
+}
+.team-copy:before{
+  content:'';position:absolute;left:-18px;bottom:-24px;width:18px;height:18px;
+  background:radial-gradient(circle at top left,transparent 18px,#fff 18.5px);
+  pointer-events:none;
+}
+@media(max-width:780px){.team-copy:before,.team-copy:after{display:none}}
+
+/* LP2-style compact, translucent sticky header. */
+header{
+  position:sticky;top:0;z-index:50;
+  background:rgba(246,245,241,.97);border-bottom:1px solid transparent;
+  transition:height 300ms cubic-bezier(.2,.75,.25,1),background-color 300ms ease,box-shadow 300ms ease,border-color 300ms ease;
+}
+header.is-scrolled{
+  height:76px;border-bottom-color:rgba(49,60,52,.1);
+  box-shadow:0 5px 24px rgba(36,44,40,.07);
+}
+@supports ((backdrop-filter:blur(16px)) or (-webkit-backdrop-filter:blur(16px))){
+  header.is-scrolled{
+    background:rgba(246,245,241,.84);
+    -webkit-backdrop-filter:blur(16px) saturate(125%);
+    backdrop-filter:blur(16px) saturate(125%);
+  }
+}
+header .logo{transition:width 300ms ease,height 300ms ease}
+header.is-scrolled .logo{width:122px;height:46px}
+html{scroll-padding-top:116px}
+@media(max-width:780px){
+  header.is-scrolled{height:60px}
+  header.is-scrolled .logo{width:100px;height:38px}
+  .js header nav{top:100%;max-height:calc(100dvh - 76px);overflow-y:auto}
+  .js header.is-scrolled nav{max-height:calc(100dvh - 60px)}
+  .menu-backdrop{transition:top 300ms cubic-bezier(.2,.75,.25,1)}
+  header.is-scrolled+.menu-backdrop{top:60px}
+  html{scroll-padding-top:84px}
+}
+@media(prefers-reduced-motion:reduce){header,header .logo,.menu-backdrop{transition:none}}

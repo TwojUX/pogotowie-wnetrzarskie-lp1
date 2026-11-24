@@ -183,3 +183,19 @@ const heroObserver = new ResizeObserver(updateHeroOutline);
 window.addEventListener('resize', updateHeroOutline);
 document.fonts.ready.then(updateHeroOutline);
 updateHeroOutline();
+
+// Separate thresholds prevent flicker while the header changes height.
+const pageHeader = document.querySelector("header");
+let headerUpdatePending = false;
+function updateHeader() {
+  if (window.scrollY > 96) pageHeader.classList.add("is-scrolled");
+  if (window.scrollY < 24) pageHeader.classList.remove("is-scrolled");
+  headerUpdatePending = false;
+}
+window.addEventListener("scroll", () => {
+  if (headerUpdatePending) return;
+  headerUpdatePending = true;
+  requestAnimationFrame(updateHeader);
+}, { passive: true });
+window.addEventListener("pageshow", updateHeader);
+updateHeader();
