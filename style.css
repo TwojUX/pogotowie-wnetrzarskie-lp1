@@ -57,3 +57,17 @@ footer{padding:32px 0 24px;border-top:1px solid var(--line);font-size:14px;color
 /* Match the consultation wording and emphasis used on LP2. */
 .consultation-cta{text-transform:uppercase;letter-spacing:1px}
 .consultation-cta b{font-weight:900}
+
+/* Round the case-study panel and align the gallery footer with the quote. */
+.case:before{display:none}
+.case-grid{padding-top:24px}
+.flat-gallery{align-self:end}
+/* Round both exposed right corners of the stepped services panel. */
+.scope-head:before,.scope-shell:after{
+  content:'';position:absolute;width:18px;height:18px;pointer-events:none;
+  background:radial-gradient(circle at bottom left,transparent 18px,var(--paper) 18.5px);
+}
+.scope-head:before{top:0;right:47.4%}
+.scope-shell:after{top:148px;right:0}
+@media(max-width:1000px){.scope-head:before,.scope-shell:after{display:none}}
+@media(max-width:780px){.case-grid{padding-top:16px}}
