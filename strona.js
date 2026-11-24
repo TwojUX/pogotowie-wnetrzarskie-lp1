@@ -151,3 +151,35 @@ for (const carousel of document.querySelectorAll('[data-carousel]')) {
   carousel.querySelector(`[data-step="${event.key === 'ArrowRight' ? 1 : -1}"]`).click();
  });
 }
+
+// Offset the green outline from the review card, including its rounded corner.
+const heroPanel = document.querySelector('.hero-panel');
+const heroProof = document.querySelector('.hero-proof');
+function updateHeroOutline() {
+  const panel = heroPanel.getBoundingClientRect();
+  const proof = heroProof.getBoundingClientRect();
+  const gap = 24;
+  const x = proof.left - panel.left - gap;
+  const y = proof.top - panel.top - gap;
+  const radius = parseFloat(getComputedStyle(heroProof).borderTopLeftRadius) + gap;
+  const outer = 18;
+  const w = panel.width;
+  const h = panel.height;
+  if (x <= outer || x + radius >= w - outer || y <= outer || y + radius >= h - outer) {
+    heroPanel.style.removeProperty('--hero-panel-clip');
+    return;
+  }
+  // Concentric arcs give the same 24px clearance along both edges and the curve.
+  const path = `M ${outer} 0 H ${w-outer} A ${outer} ${outer} 0 0 1 ${w} ${outer}
+    V ${y-outer} A ${outer} ${outer} 0 0 1 ${w-outer} ${y}
+    H ${x+radius} A ${radius} ${radius} 0 0 0 ${x} ${y+radius}
+    V ${h-outer} A ${outer} ${outer} 0 0 1 ${x-outer} ${h}
+    H ${outer} A ${outer} ${outer} 0 0 1 0 ${h-outer}
+    V ${outer} A ${outer} ${outer} 0 0 1 ${outer} 0 Z`;
+  heroPanel.style.setProperty('--hero-panel-clip', `path("${path.replace(/\s+/g, ' ')}")`);
+}
+const heroObserver = new ResizeObserver(updateHeroOutline);
+[heroPanel, heroProof, document.querySelector('.hero-photo')].forEach(element => heroObserver.observe(element));
+window.addEventListener('resize', updateHeroOutline);
+document.fonts.ready.then(updateHeroOutline);
+updateHeroOutline();
