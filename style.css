@@ -48,7 +48,7 @@ footer{padding:32px 0 24px;border-top:1px solid var(--line);font-size:14px;color
 }
 .review-card figcaption{height:64px}
 @media(max-width:1400px){
-  .review-card figcaption{height:96px;padding-right:0}
+  .review-card figcaption{height:64px;padding-right:0}
   .review-card .controls{position:static;justify-content:flex-end;margin-top:12px}
 }
 
@@ -128,3 +128,64 @@ html{scroll-padding-top:116px}
 @media(prefers-reduced-motion:reduce){header,header .logo,.menu-backdrop{transition:none}}
 
 .team-copy>.cta{margin-top:24px;max-width:100%}
+
+/* Shared spacing rhythm for sections and their primary panels. */
+:root{--section-space:64px;--panel-space:32px;--layout-gap:32px}
+.section,.cta-section{padding-block:var(--section-space)}
+.process-section{padding-top:0}
+.hero-bottom{padding-bottom:0}
+.hero-proof,.cta-banner,.scope-shell,.team-copy,.team-stats,.cost-shell{
+  padding:var(--panel-space);
+}
+.case-grid{padding:var(--panel-space);gap:var(--layout-gap)}
+.story{padding:0}
+.eyebrow,.story .eyebrow{margin-bottom:16px}
+.projects-head{margin-bottom:32px}
+.scope-head{padding-bottom:32px}
+.scope-grid,.cost-shell{gap:var(--layout-gap)}
+.team-photo{height:100%;min-height:0}
+.process-grid{margin-top:32px}
+.faq-intro img{margin-top:32px}
+.consultation{margin-top:var(--section-space);padding-block:var(--section-space)}
+@media(min-width:1001px){
+  .flat-gallery{align-self:stretch;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:16px}
+  .flat-gallery>[aria-live]{min-height:0}
+  .flat-gallery [data-slide]{position:absolute;inset:0;height:100%;aspect-ratio:auto}
+  .flat-gallery .controls{margin-top:0}
+}
+@media(max-width:780px){
+  :root{--section-space:48px;--panel-space:24px;--layout-gap:24px}
+  .team-photo{height:auto}
+  .hero-proof{gap:24px}
+}
+@media(max-width:380px){:root{--panel-space:20px}}
+
+/* Keep the pricing cutout one grid gap from the right-hand content. */
+.cost-shell{--cost-notch-width:calc((100% - 2 * var(--panel-space) - var(--layout-gap)) * .434782609 + var(--panel-space))}
+.cost-shell:after{width:var(--cost-notch-width)}
+.cost-details:before{left:var(--cost-notch-width)}
+@media(min-width:781px) and (max-width:1000px){
+  .cost-shell{--cost-notch-width:calc((100% - 2 * var(--panel-space) - var(--layout-gap)) * .465116279 + var(--panel-space))}
+}
+@media(max-width:780px){.hero-photo{min-height:0;padding-bottom:88px}}
+
+/* Closing consultation section carried over from LP2. */
+.closing-section{background:#fff;padding:0 0 var(--section-space)}
+.closing{
+  display:grid;justify-items:center;gap:24px;
+  padding:clamp(40px,6vw,80px) clamp(24px,5vw,64px);
+  border-radius:32px;text-align:center;background:var(--ink);color:#fff;
+}
+.closing h2{font-size:clamp(34px,2.92vw,42px);line-height:1.2857;text-wrap:balance}
+.closing>p{max-width:560px;color:rgba(255,255,255,.82);text-wrap:balance;font-size:18px;line-height:1.556}
+.closing>.cta{width:min(100%,408px);font-size:20px;line-height:24px;padding:16px 12px;border-radius:12px}
+.closing>.closing-phone{font-size:16px}
+.closing-phone a{color:#fff;font-weight:500;text-underline-offset:3px}
+@media(max-width:780px){
+  .closing{gap:18px;padding:36px 20px;border-radius:24px}
+  .closing h2{font-size:clamp(29px,6.8vw,38px);line-height:1.16}
+  .closing>p{font-size:17px;line-height:1.5}
+  .closing>.cta{font-size:clamp(14px,4vw,18px);padding:14px 8px;letter-spacing:.055em}
+  .closing-phone{display:none}
+}
+@media(max-width:360px){.closing{padding-inline:12px}}
